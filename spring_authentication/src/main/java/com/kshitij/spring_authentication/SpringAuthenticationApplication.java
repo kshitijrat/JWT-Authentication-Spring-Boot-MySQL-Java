@@ -8,6 +8,7 @@ public class SpringAuthenticationApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(SpringAuthenticationApplication.class, args);
+		System.out.println("\n Create Successful.........\n");
 	}
 
 }
