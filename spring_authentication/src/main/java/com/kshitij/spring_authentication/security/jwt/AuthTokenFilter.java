@@ -19,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.kshitij.spring_authentication.security.jwt.services.UserDetailsServiceImpl;
 
-
 public class AuthTokenFilter extends OncePerRequestFilter {
   @Autowired
   private JwtUtils jwtUtils;
@@ -38,11 +37,10 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         String username = jwtUtils.getUserNameFromJwtToken(jwt);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(
-                userDetails,
-                null,
-                userDetails.getAuthorities());
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+            userDetails,
+            null,
+            userDetails.getAuthorities());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -51,11 +49,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
       logger.error("Cannot set user authentication: {}", e);
     }
 
-    // filterChain.doFilter(request, response);
-    if (request.getServletPath().startsWith("/api/auth")) {
-      filterChain.doFilter(request, response);
-      return;
-  }  }
+    filterChain.doFilter(request, response);
+    // if (request.getServletPath().startsWith("/api/auth")) {
+    //   filterChain.doFilter(request, response);
+    //   return;
+    // }
+  }
 
   private String parseJwt(HttpServletRequest request) {
     String headerAuth = request.getHeader("Authorization");

@@ -1,10 +1,12 @@
 package com.kshitij.spring_authentication.controllers;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,17 +62,28 @@ public class AuthController {
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
     String jwt = jwtUtils.generateJwtToken(authentication);
-    
-    UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();    
+
+    UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
     List<String> roles = userDetails.getAuthorities().stream()
         .map(item -> item.getAuthority())
         .collect(Collectors.toList());
 
-    return ResponseEntity.ok(new JwtResponse(jwt, 
-                         userDetails.getId(), 
-                         userDetails.getUsername(), 
-                         userDetails.getEmail(), 
-                         roles));
+    // Additional logic for admin login
+    if (roles.contains("ROLE_ADMIN")) {
+      return ResponseEntity.ok(new HashMap<String, Object>() {
+        {
+          put("message", "Welcome, Admin!");
+          put("jwt", jwt);
+          put("adminEndpoints", List.of("/api/auth/admin/users")); // Inform admin of available actions
+        }
+      });
+    }
+
+    return ResponseEntity.ok(new JwtResponse(jwt,
+        userDetails.getId(),
+        userDetails.getUsername(),
+        userDetails.getEmail(),
+        roles));
   }
 
   // register......
@@ -90,9 +103,9 @@ public class AuthController {
     }
 
     // Create new user's account
-    User user = new User(signUpRequest.getUsername(), 
-               signUpRequest.getEmail(),
-               encoder.encode(signUpRequest.getPassword()));
+    User user = new User(signUpRequest.getUsername(),
+        signUpRequest.getEmail(),
+        encoder.encode(signUpRequest.getPassword()));
 
     Set<String> strRoles = signUpRequest.getRole();
     Set<Role> roles = new HashSet<>();
@@ -104,22 +117,22 @@ public class AuthController {
     } else {
       strRoles.forEach(role -> {
         switch (role) {
-        case "admin":
-          Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
-              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-          roles.add(adminRole);
+          case "admin":
+            Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+            roles.add(adminRole);
 
-          break;
-        case "mod":
-          Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR)
-              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-          roles.add(modRole);
+            break;
+          case "mod":
+            Role modRole = roleRepository.findByName(ERole.ROLE_MODERATOR)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+            roles.add(modRole);
 
-          break;
-        default:
-          Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-          roles.add(userRole);
+            break;
+          default:
+            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+            roles.add(userRole);
         }
       });
     }
@@ -132,10 +145,23 @@ public class AuthController {
 
   // logout.....
   @PostMapping("/logout")
-    public ResponseEntity<?> logoutUser() {
-        // This endpoint doesn't need to do anything on the server side, 
-        // because JWT is stateless. The frontend just needs to remove the token.
-        SecurityContextHolder.clearContext();  // Clear the security context
-        return ResponseEntity.ok(new MessageResponse("User logged out successfully!"));
+  public ResponseEntity<?> logoutUser(HttpServletRequest request) {
+    String token = parseJwt(request); // Extract the token from the Authorization header
+    if (token != null && jwtUtils.validateJwtToken(token)) {
+      jwtUtils.invalidateJwtToken(token); // Blacklist the token (optional, for enhanced security)
+      SecurityContextHolder.clearContext(); // Clear the security context
+      return ResponseEntity.ok(new MessageResponse("User logged out successfully!"));
+    } else {
+      return ResponseEntity.badRequest().body(new MessageResponse("Error: Invalid or missing token!"));
     }
+  }
+
+  private String parseJwt(HttpServletRequest request) {
+    String headerAuth = request.getHeader("Authorization");
+    if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
+      return headerAuth.substring(7); // Remove "Bearer " prefix
+    }
+    return null;
+  }
+
 }

@@ -2,6 +2,8 @@ package com.kshitij.spring_authentication.security.jwt;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +26,11 @@ public class JwtUtils {
 
   @Value("${kshitij.app.jwtExpirationMs}")
   private int jwtExpirationMs;
+
+
+  // A simple in-memory blacklist for demonstration (replace with persistent
+    // storage for production)
+    final Set<String> blacklistedTokens = new HashSet<>();
 
   public String generateJwtToken(Authentication authentication) {
 
@@ -48,6 +55,9 @@ public class JwtUtils {
 
   public boolean validateJwtToken(String authToken) {
     try {
+      if (blacklistedTokens.contains(authToken)) {
+        throw new RuntimeException("Token has been blacklisted.");
+    }
       Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
       return true;
     } catch (MalformedJwtException e) {
@@ -62,5 +72,10 @@ public class JwtUtils {
 
     return false;
   }
-}
 
+  // Add a method to blacklist a token
+  public void invalidateJwtToken(String token) {
+    blacklistedTokens.add(token);
+  }
+
+}
