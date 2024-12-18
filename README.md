@@ -32,7 +32,7 @@ Spring Authentication API is a robust and secure authentication system built wit
 
 ## Installation
 ### 1. Clone the Repository
-- git clone https://github.com/your-username/spring_authentication.git
+- git clone https://github.com/kshitijrat/JWT-Authentication-Spring-Boot-MySQL-Java.git
 - cd spring_authentication
 
 ### 2. Update Application Property
